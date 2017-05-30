@@ -87,3 +87,5 @@ ENV/
 
 # Rope project settings
 .ropeproject
+hw1/MUJOCO_LOG.TXT
+hw1/log.txt
