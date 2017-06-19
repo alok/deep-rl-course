@@ -88,4 +88,7 @@ ENV/
 # Rope project settings
 .ropeproject
 hw1/MUJOCO_LOG.TXT
-hw1/log.txt
+hw1/log.txtact.h5
+my_model.h5
+obs.h5
+act.h5
