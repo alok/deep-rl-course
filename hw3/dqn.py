@@ -1,6 +1,7 @@
 import itertools
 import random
 import sys
+import typing
 from collections import namedtuple
 
 import gym.spaces
@@ -10,8 +11,8 @@ import tensorflow.contrib.layers as layers
 
 from dqn_utils import *
 
-OptimizerSpec = namedtuple(
-    "OptimizerSpec", ["constructor", "kwargs", "lr_schedule"])
+OptimizerSpec = namedtuple("OptimizerSpec", ["constructor", "kwargs", "lr_schedule"])
+Action = int
 
 
 def learn(
@@ -103,6 +104,7 @@ def learn(
     rew_t_ph = tf.placeholder(tf.float32, [None])
     # placeholder for next observation (or state)
     obs_tp1_ph = tf.placeholder(tf.uint8, [None] + list(input_shape))
+    # TODO fill in placeholders with env obs
     # placeholder for end of episode mask
     # this value is 1 if the next state corresponds to the end of an episode,
     # in which case there is no Q-value at the next state; at the end of an
@@ -173,36 +175,52 @@ def learn(
     last_obs = env.reset()
     LOG_EVERY_N_STEPS = 10000
 
+    # TODO use LinearSchedule
+    def epsilon_greedy(q, epsilon=.05) -> Action:
+        # return action
+        return random.choice(range(num_actions)) if random.random() < epsilon else np.argmax(q)
+
     for t in itertools.count():
         ### 1. Check stopping criterion
         if stopping_criterion is not None and stopping_criterion(env, t):
             break
 
         ### 2. Step the env and store the transition
+
         # At this point, "last_obs" contains the latest observation that was
-        # recorded from the simulator. Here, your code needs to store this
-        # observation and its outcome (reward, next observation, etc.) into
-        # the replay buffer while stepping the simulator forward one step.
+        # recorded from the simulator.
+
+        # Here, your code needs to store this observation and its
+        # outcome (reward, next observation, etc.) into the replay
+        # buffer while stepping the simulator forward one step.
+
         # At the end of this block of code, the simulator should have been
         # advanced one step, and the replay buffer should contain one more
         # transition.
+
         # Specifically, last_obs must point to the new latest observation.
+
         # Useful functions you'll need to call:
         # obs, reward, done, info = env.step(action)
         # this steps the environment forward one step
         # obs = env.reset()
         # this resets the environment if you reached an episode boundary.
+
         # Don't forget to call env.reset() to get a new observation if done
         # is true!!
+
         # Note that you cannot use "last_obs" directly as input
         # into your network, since it needs to be processed to include context
-        # from previous frames. You should check out the replay buffer
+        # from previous frames. You should check out the replay buffer (TODO)
         # implementation in dqn_utils.py to see what functionality the replay
-        # buffer exposes. The replay buffer has a function called
+        # buffer exposes.
+
+        # The replay buffer has a function called
         # encode_recent_observation that will take the latest observation
         # that you pushed into the buffer and compute the corresponding
         # input that should be given to a Q network by appending some
         # previous frames.
+
         # Don't forget to include epsilon greedy exploration!
         # And remember that the first time you enter this loop, the model
         # may not yet have been initialized (but of course, the first step
