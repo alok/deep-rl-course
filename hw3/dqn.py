@@ -126,21 +126,32 @@ def learn(env,
     # q_func_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='q_func')
     # Older versions of TensorFlow may require using "VARIABLES" instead of "GLOBAL_VARIABLES"
     ######
-    
+
     # YOUR CODE HERE
+    # TQ_target - Q_curr
+
+    q_target = q_func
+
+    total_error = rew_t_ph + gamma * max(q_target(obs_tp1_ph, a_prime)  for a_prime in range(num_actions)) - q_func(obs_t_ph,act_t_ph)
+
 
     ######
 
     # construct optimization op (with gradient clipping)
     learning_rate = tf.placeholder(tf.float32, (), name="learning_rate")
-    optimizer = optimizer_spec.constructor(learning_rate=learning_rate, **optimizer_spec.kwargs)
-    train_fn = minimize_and_clip(optimizer, total_error,
-                 var_list=q_func_vars, clip_val=grad_norm_clipping)
+    optimizer = optimizer_spec.constructor(
+        learning_rate=learning_rate, **optimizer_spec.kwargs)
+    train_fn = minimize_and_clip(
+        optimizer,
+        total_error,
+        var_list=q_func_vars,
+        clip_val=grad_norm_clipping)
 
     # update_target_fn will be called periodically to copy Q network to target Q network
     update_target_fn = []
-    for var, var_target in zip(sorted(q_func_vars,        key=lambda v: v.name),
-                               sorted(target_q_func_vars, key=lambda v: v.name)):
+    for var, var_target in zip(
+        sorted(q_func_vars, key=lambda v: v.name),
+        sorted(target_q_func_vars, key=lambda v: v.name)):
         update_target_fn.append(var_target.assign(var))
     update_target_fn = tf.group(*update_target_fn)
 
