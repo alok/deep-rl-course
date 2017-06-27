@@ -58,7 +58,7 @@ def learn(
     session: tf.Session
         tensorflow session to use.
     exploration: rl_algs.deepq.utils.schedules.Schedule
-        schedule for probability of chosing random action.
+        schedule for probability of choosing random action.
     stopping_criterion: (env, t) -> bool
         should return true when it's ok for the RL algorithm to stop.
         takes in env and the number of steps executed so far.
@@ -251,11 +251,14 @@ def learn(
         if (
             t > learning_starts and t % learning_freq == 0 and
             replay_buffer.can_sample(batch_size)):
+
             # Here, you should perform training. Training consists of four steps:
+
             # 3.a: use the replay buffer to sample a batch of transitions (see the
             # replay buffer code for function definition, each batch that you sample
             # should consist of current observations, current actions, rewards,
             # next observations, and done indicator).
+
             # 3.b: initialize the model if it has not been initialized yet; to do
             # that, call
             #    initialize_interdependent_variables(session, tf.global_variables(), {
@@ -266,6 +269,7 @@ def learn(
             # the current and next time step. The boolean variable model_initialized
             # indicates whether or not the model has been initialized.
             # Remember that you have to update the target network too (see 3.d)!
+
             # 3.c: train the model. To do this, you'll need to use the train_fn and
             # total_error ops that were created earlier: total_error is what you
             # created to compute the total Bellman error in a batch, and train_fn
@@ -280,6 +284,7 @@ def learn(
             # (this is needed for computing total_error)
             # learning_rate -- you can get this from optimizer_spec.lr_schedule.value(t)
             # (this is needed by the optimizer to choose the learning rate)
+
             # 3.d: periodically update the target network by calling
             # session.run(update_target_fn)
             # you should update every target_update_freq steps, and you may find the
@@ -292,13 +297,11 @@ def learn(
             #####
 
         ### 4. Log progress
-        episode_rewards = get_wrapper_by_name(env,
-                                              "Monitor").get_episode_rewards()
+        episode_rewards = get_wrapper_by_name(env, "Monitor").get_episode_rewards()
         if len(episode_rewards) > 0:
             mean_episode_reward = np.mean(episode_rewards[-100:])
         if len(episode_rewards) > 100:
-            best_mean_episode_reward = max(
-                best_mean_episode_reward, mean_episode_reward)
+            best_mean_episode_reward = max(best_mean_episode_reward, mean_episode_reward)
         if t % LOG_EVERY_N_STEPS == 0 and model_initialized:
             print("Timestep %d" % (t, ))
             print("mean reward (100 episodes) %f" % mean_episode_reward)

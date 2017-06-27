@@ -1,15 +1,16 @@
 import argparse
-import gym
-from gym import wrappers
 import os.path as osp
 import random
+
+import gym
 import numpy as np
 import tensorflow as tf
 import tensorflow.contrib.layers as layers
+from gym import wrappers
 
 import dqn
-from dqn_utils import *
 from atari_wrappers import *
+from dqn_utils import *
 
 
 def atari_model(img_in, num_actions, scope, reuse=False):
@@ -27,6 +28,7 @@ def atari_model(img_in, num_actions, scope, reuse=False):
             out = layers.fully_connected(out, num_outputs=num_actions, activation_fn=None)
 
         return out
+
 
 def atari_learn(env,
                 session,
@@ -46,6 +48,7 @@ def atari_learn(env,
         kwargs=dict(epsilon=1e-4),
         lr_schedule=lr_schedule
     )
+
 
     def stopping_criterion(env, t):
         # notice that here t is the number of steps of the wrapped env,
@@ -78,10 +81,12 @@ def atari_learn(env,
     )
     env.close()
 
+
 def get_available_gpus():
     from tensorflow.python.client import device_lib
     local_device_protos = device_lib.list_local_devices()
     return [x.physical_device_desc for x in local_device_protos if x.device_type == 'GPU']
+
 
 def set_global_seeds(i):
     try:
@@ -93,6 +98,7 @@ def set_global_seeds(i):
     np.random.seed(i)
     random.seed(i)
 
+
 def get_session():
     tf.reset_default_graph()
     tf_config = tf.ConfigProto(
@@ -101,6 +107,7 @@ def get_session():
     session = tf.Session(config=tf_config)
     print("AVAILABLE GPUS: ", get_available_gpus())
     return session
+
 
 def get_env(task, seed):
     env_id = task.env_id
@@ -116,6 +123,7 @@ def get_env(task, seed):
 
     return env
 
+
 def main():
     # Get Atari games.
     benchmark = gym.benchmark_spec('Atari40M')
@@ -124,10 +132,11 @@ def main():
     task = benchmark.tasks[3]
 
     # Run training
-    seed = 0 # Use a seed of zero (you may want to randomize the seed!)
+    seed = 0  # Use a seed of zero (you may want to randomize the seed!)
     env = get_env(task, seed)
     session = get_session()
     atari_learn(env, session, num_timesteps=task.max_timesteps)
+
 
 if __name__ == "__main__":
     main()
