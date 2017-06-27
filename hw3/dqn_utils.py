@@ -230,7 +230,7 @@ class ReplayBuffer(object):
 
         when observing `obs_batch[i]`, action `act_batch[i]` was taken,
         after which reward `rew_batch[i]` was received and subsequent
-        observation  next_obs_batch[i] was observed, unless the epsiode
+        observation  next_obs_batch[i] was observed, unless the episode
         was done which is represented by `done_mask[i]` which is equal
         to 1 if episode has ended as a result of that action.
 
@@ -328,7 +328,7 @@ class ReplayBuffer(object):
         return ret
 
     def store_effect(self, idx, action, reward, done):
-        """Store effects of action taken after obeserving frame stored
+        """Store effects of action taken after observing frame stored
         at index idx. The reason `store_frame` and `store_effect` is broken
         up into two functions is so that once can call `encode_recent_observation`
         in between.

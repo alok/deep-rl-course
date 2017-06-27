@@ -1,29 +1,34 @@
-import sys
-import gym.spaces
 import itertools
-import numpy as np
 import random
-import tensorflow                as tf
-import tensorflow.contrib.layers as layers
+import sys
 from collections import namedtuple
+
+import gym.spaces
+import numpy as np
+import tensorflow as tf
+import tensorflow.contrib.layers as layers
+
 from dqn_utils import *
 
-OptimizerSpec = namedtuple("OptimizerSpec", ["constructor", "kwargs", "lr_schedule"])
+OptimizerSpec = namedtuple(
+    "OptimizerSpec", ["constructor", "kwargs", "lr_schedule"])
 
-def learn(env,
-          q_func,
-          optimizer_spec,
-          session,
-          exploration=LinearSchedule(1000000, 0.1),
-          stopping_criterion=None,
-          replay_buffer_size=1000000,
-          batch_size=32,
-          gamma=0.99,
-          learning_starts=50000,
-          learning_freq=4,
-          frame_history_len=4,
-          target_update_freq=10000,
-          grad_norm_clipping=10):
+
+def learn(
+    env,
+    q_func,
+    optimizer_spec,
+    session,
+    exploration=LinearSchedule(1000000, 0.1),
+    stopping_criterion=None,
+    replay_buffer_size=1000000,
+    batch_size=32,
+    gamma=0.99,
+    learning_starts=50000,
+    learning_freq=4,
+    frame_history_len=4,
+    target_update_freq=10000,
+    grad_norm_clipping=10):
     """Run Deep Q-learning algorithm.
 
     You can specify your own convnet using q_func.
@@ -75,7 +80,7 @@ def learn(env,
         If not None gradients' norms are clipped to this value.
     """
     assert type(env.observation_space) == gym.spaces.Box
-    assert type(env.action_space)      == gym.spaces.Discrete
+    assert type(env.action_space) == gym.spaces.Discrete
 
     ###############
     # BUILD MODEL #
@@ -91,22 +96,22 @@ def learn(env,
 
     # set up placeholders
     # placeholder for current observation (or state)
-    obs_t_ph              = tf.placeholder(tf.uint8, [None] + list(input_shape))
+    obs_t_ph = tf.placeholder(tf.uint8, [None] + list(input_shape))
     # placeholder for current action
-    act_t_ph              = tf.placeholder(tf.int32,   [None])
+    act_t_ph = tf.placeholder(tf.int32, [None])
     # placeholder for current reward
-    rew_t_ph              = tf.placeholder(tf.float32, [None])
+    rew_t_ph = tf.placeholder(tf.float32, [None])
     # placeholder for next observation (or state)
-    obs_tp1_ph            = tf.placeholder(tf.uint8, [None] + list(input_shape))
+    obs_tp1_ph = tf.placeholder(tf.uint8, [None] + list(input_shape))
     # placeholder for end of episode mask
     # this value is 1 if the next state corresponds to the end of an episode,
     # in which case there is no Q-value at the next state; at the end of an
     # episode, only the current state reward contributes to the target, not the
     # next state Q-value (i.e. target is just rew_t_ph, not rew_t_ph + gamma * q_tp1)
-    done_mask_ph          = tf.placeholder(tf.float32, [None])
+    done_mask_ph = tf.placeholder(tf.float32, [None])
 
     # casting to float on GPU ensures lower data transfer times.
-    obs_t_float   = tf.cast(obs_t_ph,   tf.float32) / 255.0
+    obs_t_float = tf.cast(obs_t_ph, tf.float32) / 255.0
     obs_tp1_float = tf.cast(obs_tp1_ph, tf.float32) / 255.0
 
     # Here, you should fill in your own code to compute the Bellman error. This requires
@@ -163,7 +168,7 @@ def learn(env,
     ###############
     model_initialized = False
     num_param_updates = 0
-    mean_episode_reward      = -float('nan')
+    mean_episode_reward = -float('nan')
     best_mean_episode_reward = -float('inf')
     last_obs = env.reset()
     LOG_EVERY_N_STEPS = 10000
@@ -204,8 +209,10 @@ def learn(env,
         # might as well be random, since you haven't trained your net...)
 
         #####
-        
+
         # YOUR CODE HERE
+
+        env.step()
 
         #####
 
@@ -217,9 +224,9 @@ def learn(env,
         # note that this is only done if the replay buffer contains enough samples
         # for us to learn something useful -- until then, the model will not be
         # initialized and random actions should be taken
-        if (t > learning_starts and
-                t % learning_freq == 0 and
-                replay_buffer.can_sample(batch_size)):
+        if (
+            t > learning_starts and t % learning_freq == 0 and
+            replay_buffer.can_sample(batch_size)):
             # Here, you should perform training. Training consists of four steps:
             # 3.a: use the replay buffer to sample a batch of transitions (see the
             # replay buffer code for function definition, each batch that you sample
@@ -254,19 +261,22 @@ def learn(env,
             # you should update every target_update_freq steps, and you may find the
             # variable num_param_updates useful for this (it was initialized to 0)
             #####
-            
+
             # YOUR CODE HERE
+            pass
 
             #####
 
         ### 4. Log progress
-        episode_rewards = get_wrapper_by_name(env, "Monitor").get_episode_rewards()
+        episode_rewards = get_wrapper_by_name(env,
+                                              "Monitor").get_episode_rewards()
         if len(episode_rewards) > 0:
             mean_episode_reward = np.mean(episode_rewards[-100:])
         if len(episode_rewards) > 100:
-            best_mean_episode_reward = max(best_mean_episode_reward, mean_episode_reward)
+            best_mean_episode_reward = max(
+                best_mean_episode_reward, mean_episode_reward)
         if t % LOG_EVERY_N_STEPS == 0 and model_initialized:
-            print("Timestep %d" % (t,))
+            print("Timestep %d" % (t, ))
             print("mean reward (100 episodes) %f" % mean_episode_reward)
             print("best mean reward %f" % best_mean_episode_reward)
             print("episodes %d" % len(episode_rewards))
