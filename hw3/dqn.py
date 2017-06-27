@@ -236,7 +236,21 @@ def learn(
 
         # YOUR CODE HERE
 
-        env.step()
+        act = epsilon_greedy(Q)
+
+        obs, r, done, _ = env.step(act)
+
+        # TODO store into replay buffer and then do rest of stuff
+
+        last_obs = obs
+
+        if done:
+            env.reset()
+        else:
+            
+
+
+
 
         #####
 
