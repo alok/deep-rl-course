@@ -135,31 +135,37 @@ def learn(
     ######
 
     # YOUR CODE HERE
-    # TQ_target - Q_curr
 
-    q_target = q_func
+    # TODO how does reuse work?
+    # TODO use double dqn by taking argmax of current q for q target
+    Q = q_func(obs_t_float, num_actions, scope='current_q', reuse=False)
+    Q_target = q_func(obs_tp1_float, num_actions, scope='target_q', reuse=False)
 
-    total_error = rew_t_ph + gamma * max(q_target(obs_tp1_ph, a_prime)  for a_prime in range(num_actions)) - q_func(obs_t_ph,act_t_ph)
+    def T(q=Q_target, r=rew_t_ph, gamma=gamma):
+        '''Bellman operator.'''
+        return r + gamma * np.max(q)
 
+    # TODO should this be mean squared error?
+    total_error = (T(Q_target) - Q[act_t_ph]) ** 2
+
+    q_func_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='current_q')
+    target_q_func_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='target_q')
 
     ######
 
     # construct optimization op (with gradient clipping)
     learning_rate = tf.placeholder(tf.float32, (), name="learning_rate")
-    optimizer = optimizer_spec.constructor(
-        learning_rate=learning_rate, **optimizer_spec.kwargs)
+    optimizer = optimizer_spec.constructor(learning_rate=learning_rate, **optimizer_spec.kwargs)
     train_fn = minimize_and_clip(
-        optimizer,
-        total_error,
-        var_list=q_func_vars,
-        clip_val=grad_norm_clipping)
+        optimizer, total_error, var_list=q_func_vars, clip_val=grad_norm_clipping)
 
     # update_target_fn will be called periodically to copy Q network to target Q network
-    update_target_fn = []
-    for var, var_target in zip(
-        sorted(q_func_vars, key=lambda v: v.name),
-        sorted(target_q_func_vars, key=lambda v: v.name)):
-        update_target_fn.append(var_target.assign(var))
+    update_target_fn = [
+        var_target.assign(var)
+        for var, var_target in zip(
+            sorted(q_func_vars, key=lambda v: v.name),
+            sorted(target_q_func_vars, key=lambda v: v.name))]
+
     update_target_fn = tf.group(*update_target_fn)
 
     # construct the replay buffer
