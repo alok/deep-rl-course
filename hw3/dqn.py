@@ -7,13 +7,14 @@ from collections import namedtuple
 import gym.spaces
 import numpy as np
 import tensorflow as tf
-import tensorflow.contrib.layers as layers
 
 from dqn_utils import *
 
 OptimizerSpec = namedtuple("OptimizerSpec", ["constructor", "kwargs", "lr_schedule"])
 Action = int
 
+START_LEARNING = 50
+LOG_EVERY_N_STEPS = 10
 
 def learn(
     env,
@@ -22,7 +23,7 @@ def learn(
     session,
     exploration=LinearSchedule(1000000, 0.1),
     stopping_criterion=None,
-    replay_buffer_size=1000000,
+    replay_buffer_size=1e6,
     batch_size=32,
     gamma=0.99,
     learning_starts=50000,
@@ -80,8 +81,12 @@ def learn(
     grad_norm_clipping: float or None
         If not None gradients' norms are clipped to this value.
     """
-    assert type(env.observation_space) == gym.spaces.Box
-    assert type(env.action_space) == gym.spaces.Discrete
+    assert isinstance(env.observation_space, gym.spaces.Box)
+    assert isinstance(env.action_space, gym.spaces.Discrete)
+
+    # from tensorflow.python import debug as tf_debug
+    # session = tf_debug.LocalCLIDebugWrapperSession(session)
+    # session.add_tensor_filter("has_inf_or_nan", tf_debug.has_inf_or_nan)
 
     ###############
     # BUILD MODEL #
