@@ -175,15 +175,15 @@ class ReplayBuffer(object):
     def __init__(self, size, frame_history_len):
         """This is a memory efficient implementation of the replay buffer.
 
-        The sepecific memory optimizations use here are:
+        The specific memory optimizations used here are:
             - only store each frame once rather than k times
               even if every observation normally consists of k last frames
-            - store frames as np.uint8 (actually it is most time-performance
+            - store frames as np.uint8 (actually it is most time-performant
               to cast them back to float32 on GPU to minimize memory transfer
               time)
             - store frame_t and frame_(t+1) in the same buffer.
 
-        For the tipical use case in Atari Deep RL buffer with 1M frames the total
+        For the typical use case in Atari Deep RL buffer with 1M frames the total
         memory footprint of this buffer is 10^6 * 84 * 84 bytes ~= 7 gigabytes
 
         Warning! Assumes that returning frame of zeros at the beginning
@@ -333,7 +333,7 @@ class ReplayBuffer(object):
         up into two functions is so that once can call `encode_recent_observation`
         in between.
 
-        Paramters
+        Parameters
         ---------
         idx: int
             Index in buffer of recently observed frame (returned by `store_frame`).

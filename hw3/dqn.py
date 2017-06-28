@@ -142,18 +142,19 @@ def learn(
     ######
 
     # YOUR CODE HERE
+    session.run(tf.Print(act_t, [act_t]))
 
-    # TODO how does reuse work?
-    # TODO use double dqn by taking argmax of current q for q target
+    # TODO use double DQN by taking argmax of current `Q` for `Q_target`
     Q = q_func(obs_t_float, num_actions, scope='current_q', reuse=False)
+    q_act_t = tf.reduce_sum(act_t * Q, axis=1)
     Q_target = q_func(obs_tp1_float, num_actions, scope='target_q', reuse=False)
 
     def T(q=Q_target, r=rew_t_ph, gamma=gamma):
         '''Bellman operator.'''
-        return r + gamma * np.max(q)
+        return r + (1 - done_mask_ph) * gamma * tf.reduce_max(q)
 
-    # TODO should this be mean squared error?
-    total_error = (T(Q_target) - Q[act_t_ph]) ** 2
+    total_error = tf.losses.mean_squared_error(T(Q_target), q_act_t)
+    # total_error = tf.losses.mean_squared_error(T(Q_target), Q[0])
 
     q_func_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='current_q')
     target_q_func_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='target_q')
@@ -167,13 +168,13 @@ def learn(
         optimizer, total_error, var_list=q_func_vars, clip_val=grad_norm_clipping)
 
     # update_target_fn will be called periodically to copy Q network to target Q network
-    update_target_fn = [
-        var_target.assign(var)
-        for var, var_target in zip(
-            sorted(q_func_vars, key=lambda v: v.name),
-            sorted(target_q_func_vars, key=lambda v: v.name))]
 
-    update_target_fn = tf.group(*update_target_fn)
+    update_target_fn = tf.group(
+        * [
+            var_target.assign(var)
+            for var, var_target in zip(
+                sorted(q_func_vars, key=lambda v: v.name),
+                sorted(target_q_func_vars, key=lambda v: v.name))])
 
     # construct the replay buffer
     replay_buffer = ReplayBuffer(replay_buffer_size, frame_history_len)
@@ -186,17 +187,26 @@ def learn(
     mean_episode_reward = -float('nan')
     best_mean_episode_reward = -float('inf')
     last_obs = env.reset()
-    LOG_EVERY_N_STEPS = 10000
 
-    # TODO use LinearSchedule
-    def epsilon_greedy(q, epsilon=.05) -> Action:
+    def epsilon_greedy(q, epsilon=.05, rand=False) -> Action:
         # return action
-        return random.choice(range(num_actions)) if random.random() < epsilon else np.argmax(q)
+        return np.random.choice(num_actions) if (
+            rand or not model_initialized or random.random() < epsilon) else int(
+                session.run(
+                    tf.argmax(q, axis=1),
+                    feed_dict={obs_t_ph: [replay_buffer.encode_recent_observation()]}))
 
     for t in itertools.count():
         ### 1. Check stopping criterion
         if stopping_criterion is not None and stopping_criterion(env, t):
             break
+
+            if not model_initialized:
+                initialize_interdependent_variables(
+                    session, tf.global_variables(), {
+                        obs_t_ph: obs_batch,
+                        obs_tp1_ph: obs_batch, })
+                model_initialized = True
 
         ### 2. Step the env and store the transition
 
@@ -242,22 +252,21 @@ def learn(
         #####
 
         # YOUR CODE HERE
+        act = epsilon_greedy(
+            Q, epsilon=exploration.value(t)
+        ) if replay_buffer.can_sample(batch_size) else epsilon_greedy(
+            Q, epsilon=exploration.value(t), rand=True)
 
-        act = epsilon_greedy(Q)
-
-        obs, r, done, _ = env.step(act)
-
-        # TODO store into replay buffer and then do rest of stuff
-
-        last_obs = obs
+        obs, rew, done, _ = env.step(act)
 
         if done:
             env.reset()
-        else:
-            
 
+        # obs is more like next_obs
+        # XXX 2 stateful effects, in the `store_frame` and `store_effect`
+        replay_buffer.store_effect(replay_buffer.store_frame(last_obs), act, rew, done)
 
-
+        last_obs = obs
 
         #####
 
@@ -269,9 +278,7 @@ def learn(
         # note that this is only done if the replay buffer contains enough samples
         # for us to learn something useful -- until then, the model will not be
         # initialized and random actions should be taken
-        if (
-            t > learning_starts and t % learning_freq == 0 and
-            replay_buffer.can_sample(batch_size)):
+        if t > learning_starts and t % learning_freq == 0 and replay_buffer.can_sample(batch_size):
 
             # Here, you should perform training. Training consists of four steps:
 
@@ -306,18 +313,43 @@ def learn(
             # learning_rate -- you can get this from optimizer_spec.lr_schedule.value(t)
             # (this is needed by the optimizer to choose the learning rate)
 
-            # 3.d: periodically update the target network by calling
-            # session.run(update_target_fn)
-            # you should update every target_update_freq steps, and you may find the
-            # variable num_param_updates useful for this (it was initialized to 0)
-            #####
-
             # YOUR CODE HERE
-            pass
+
+            ################################           ## Sampling ################################
+
+            # sample data from replay buffer for training
+            obs_batch, act_batch, rew_batch, next_obs_batch, done_mask = replay_buffer.sample(
+                batch_size)
+
+            # init vars
+            if not model_initialized:
+                initialize_interdependent_variables(
+                    session, tf.global_variables(), {
+                        obs_t_ph: obs_batch,
+                        obs_tp1_ph: obs_batch, })
+                model_initialized = True
+
+            # train model
+
+            file_writer = tf.summary.FileWriter('logs', session.graph)
+            session.run(
+                train_fn,
+                feed_dict={
+                    obs_t_ph: obs_batch,
+                    act_t_ph: act_batch,
+                    rew_t_ph: rew_batch,
+                    obs_tp1_ph: next_obs_batch,
+                    learning_rate: optimizer_spec.lr_schedule.value(t),
+                    done_mask_ph: done_mask, })
+
+            # update target network occasionally
+            if t % target_update_freq == 0:
+                session.run(update_target_fn)
 
             #####
 
-        ### 4. Log progress
+            ### 4. Log progress
+
         episode_rewards = get_wrapper_by_name(env, "Monitor").get_episode_rewards()
         if len(episode_rewards) > 0:
             mean_episode_reward = np.mean(episode_rewards[-100:])
