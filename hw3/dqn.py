@@ -101,15 +101,17 @@ def learn(
     num_actions = env.action_space.n
 
     # set up placeholders
-    # placeholder for current observation (or state)
-    obs_t_ph = tf.placeholder(tf.uint8, [None] + list(input_shape))
-    # placeholder for current action
-    act_t_ph = tf.placeholder(tf.int32, [None])
-    # placeholder for current reward
-    rew_t_ph = tf.placeholder(tf.float32, [None])
-    # placeholder for next observation (or state)
-    obs_tp1_ph = tf.placeholder(tf.uint8, [None] + list(input_shape))
-    # TODO fill in placeholders with env obs
+    # current observation
+    obs_t_ph = tf.placeholder(tf.uint8, shape=[None] + list(input_shape))
+    # current action
+    act_t_ph = tf.placeholder(tf.int32, shape=[None])
+    # TODO why one_hot necessary?
+    act_t = tf.one_hot(act_t_ph, depth=num_actions, dtype=tf.float32, name="action_one_hot")
+    # current reward
+    rew_t_ph = tf.placeholder(tf.float32, shape=[None])
+    # next observation
+    obs_tp1_ph = tf.placeholder(tf.uint8, shape=[None] + list(input_shape))
+
     # placeholder for end of episode mask
     # this value is 1 if the next state corresponds to the end of an episode,
     # in which case there is no Q-value at the next state; at the end of an
