@@ -13,8 +13,9 @@ from dqn_utils import *
 OptimizerSpec = namedtuple("OptimizerSpec", ["constructor", "kwargs", "lr_schedule"])
 Action = int
 
-START_LEARNING = 50
-LOG_EVERY_N_STEPS = 10
+START_LEARNING = 50_000
+LOG_EVERY_N_STEPS = 10_000
+
 
 def learn(
     env,
@@ -26,7 +27,7 @@ def learn(
     replay_buffer_size=1e6,
     batch_size=32,
     gamma=0.99,
-    learning_starts=50000,
+    learning_starts=START_LEARNING,
     learning_freq=4,
     frame_history_len=4,
     target_update_freq=10000,
@@ -142,7 +143,6 @@ def learn(
     ######
 
     # YOUR CODE HERE
-    session.run(tf.Print(act_t, [act_t]))
 
     # TODO use double DQN by taking argmax of current `Q` for `Q_target`
     Q = q_func(obs_t_float, num_actions, scope='current_q', reuse=False)
@@ -187,6 +187,8 @@ def learn(
     mean_episode_reward = -float('nan')
     best_mean_episode_reward = -float('inf')
     last_obs = env.reset()
+
+    saver = tf.train.Saver()
 
     def epsilon_greedy(q, epsilon=.05, rand=False) -> Action:
         # return action
@@ -331,7 +333,6 @@ def learn(
 
             # train model
 
-            file_writer = tf.summary.FileWriter('logs', session.graph)
             session.run(
                 train_fn,
                 feed_dict={
@@ -350,12 +351,17 @@ def learn(
 
             ### 4. Log progress
 
+        # file_writer = tf.summary.FileWriter('logs', session.graph)
         episode_rewards = get_wrapper_by_name(env, "Monitor").get_episode_rewards()
         if len(episode_rewards) > 0:
             mean_episode_reward = np.mean(episode_rewards[-100:])
         if len(episode_rewards) > 100:
             best_mean_episode_reward = max(best_mean_episode_reward, mean_episode_reward)
         if t % LOG_EVERY_N_STEPS == 0 and model_initialized:
+
+            # save network to disk
+            saver.save(session, 'q_func', global_step=t)
+
             print("Timestep %d" % (t, ))
             print("mean reward (100 episodes) %f" % mean_episode_reward)
             print("best mean reward %f" % best_mean_episode_reward)
