@@ -9,12 +9,13 @@ import numpy as np
 import tensorflow as tf
 
 from dqn_utils import *
+from pudb import set_trace
 
 OptimizerSpec = namedtuple("OptimizerSpec", ["constructor", "kwargs", "lr_schedule"])
 Action = int
 
-START_LEARNING = 50_000
-LOG_EVERY_N_STEPS = 10_000
+START_LEARNING = 33
+LOG_EVERY_N_STEPS = 100
 
 
 def learn(
@@ -147,6 +148,7 @@ def learn(
     # TODO use double DQN by taking argmax of current `Q` for `Q_target`
     Q = q_func(obs_t_float, num_actions, scope='current_q', reuse=False)
     q_act_t = tf.reduce_sum(act_t * Q, axis=1)
+    set_trace()
     Q_target = q_func(obs_tp1_float, num_actions, scope='target_q', reuse=False)
 
     def T(q=Q_target, r=rew_t_ph, gamma=gamma):
@@ -154,7 +156,7 @@ def learn(
         return r + (1 - done_mask_ph) * gamma * tf.reduce_max(q)
 
     total_error = tf.losses.mean_squared_error(T(Q_target), q_act_t)
-    # total_error = tf.losses.mean_squared_error(T(Q_target), Q[0])
+    total_error = tf.losses.mean_squared_error(T(Q_target), Q[0])
 
     q_func_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='current_q')
     target_q_func_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='target_q')
@@ -351,7 +353,7 @@ def learn(
 
             ### 4. Log progress
 
-        # file_writer = tf.summary.FileWriter('logs', session.graph)
+        file_writer = tf.summary.FileWriter(logdir='logs', graph=session.graph)
         episode_rewards = get_wrapper_by_name(env, "Monitor").get_episode_rewards()
         if len(episode_rewards) > 0:
             mean_episode_reward = np.mean(episode_rewards[-100:])
